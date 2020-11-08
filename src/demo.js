@@ -3,7 +3,8 @@ import Coverable from './index'
 const coverable = new Coverable({
   parent: '#wrapper',
   children: '.item',
-  onHold: (nodes) => {
+  threshold: 1000,
+  onHold: (point, nodes) => {
     console.log(nodes)
   }
 })

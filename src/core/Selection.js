@@ -1,23 +1,29 @@
+import { getStyles } from '../utils/dom'
+
 export default function Selection() {
   this.el = null
   this._visible = false
   this._styleText = ''
 }
 
-Selection.prototype.init = function(parent) {
+Selection.prototype.init = function(parent, selectionClassName = 'coverable-selection') {
   if (!parent) {
     throw new Error('Selection: invalid parent node')
   }
   if (this.el) {
     return
   }
+  // 为父元素添加相对定位样式
+  const position = getStyles(parent).position
+  if (['fixed', 'absolute', 'relative'].indexOf(position) === -1) {
+    parent.classList.add('coverable-parent--relative')
+  }
+
   const selection = document.createElement('div')
-  selection.className = 'coverable-selection'
+  selection.className = selectionClassName
   this.el = selection
   this._visible = false
   parent.appendChild(selection)
-  // 为父元素添加相对定位样式
-  // ...
 }
 
 Selection.prototype.show = function() {

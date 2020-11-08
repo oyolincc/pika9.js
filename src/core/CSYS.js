@@ -38,18 +38,19 @@ CSYS.prototype.add = function(elements) {
 }
 
 CSYS.prototype.addElement = function(element) {
-  const deltaX = element.offsetLeft - this._origin.getX() + (element.offsetWidth >> 1)
-  const deltaY = element.offsetTop - this._origin.getY() + (element.offsetHeight >> 1)
+  const centerPoint = new Point(
+    element.offsetLeft - this._origin.getX() + (element.offsetWidth >> 1),
+    element.offsetTop - this._origin.getY() + (element.offsetHeight >> 1)
+  )
   const item = {
-    mX: deltaX,
-    mY: deltaY,
+    centerPoint,
     element
   }
 
-  const quadrant = this.getQuadrantByXY(deltaX, deltaY)
+  const quadrant = this.getQuadrant(centerPoint)
   quadrant.samples.push(item)
-  quadrant.x.total += item.mX
-  quadrant.y.total += item.mY
+  quadrant.x.total += centerPoint.getX()
+  quadrant.y.total += centerPoint.getY()
 }
 
 /**
@@ -57,22 +58,21 @@ CSYS.prototype.addElement = function(element) {
  * @param {Number} x 
  * @param {Number} y 
  */
-CSYS.prototype.get = function(x, y) {
-  const deltaX = x - this._origin.getX()
-  const deltaY = y - this._origin.getY()
-  if (!deltaX || !deltaY) {
+CSYS.prototype.get = function(point) {
+  const { x, y } = point.minus(this._origin)
+  if (!x || !y) {
     return []
   }
 
-  const quadrant = this.getQuadrantByXY(deltaX, deltaY)
+  const quadrant = this.getQuadrant(new Point(x, y))
   let sortAbs = ''
   let mapAbs = ''
   if (quadrant.sortType === 'x') {
-    sortAbs = Math.abs(deltaX)
-    mapAbs = Math.abs(deltaY)
+    sortAbs = Math.abs(x)
+    mapAbs = Math.abs(y)
   } else {
-    sortAbs = Math.abs(deltaY)
-    mapAbs = Math.abs(deltaX)
+    sortAbs = Math.abs(y)
+    mapAbs = Math.abs(x)
   }
 
   const result = []
@@ -90,7 +90,9 @@ CSYS.prototype.get = function(x, y) {
   return result
 }
 
-CSYS.prototype.getQuadrantByXY = function(x, y) {
+// 根据坐标获取象限数据
+CSYS.prototype.getQuadrant = function(point) {
+  const { x, y } = point.get()
   if (x >= 0) {
     if (y > 0) {
       return this._quadrants[0]
@@ -106,13 +108,14 @@ CSYS.prototype.getQuadrantByXY = function(x, y) {
   }
 }
 
+// 计算离散度
 CSYS.prototype.calcDispersion = function(quadrant, type) {
   const samples = quadrant.samples
   const payload = quadrant[type]
   const average = payload.total / samples.length
   for (let i = 0; i < samples.length; i++) {
     const sample = samples[i]
-    payload.dispersion += Math.abs(sample[`m${type.toUpperCase()}`] - average)
+    payload.dispersion += Math.abs(sample.centerPoint.get()[type] - average)
   }
 }
 
@@ -137,10 +140,11 @@ CSYS.prototype.sort = function() {
 
     for (let j = 0; j < samples.length; j++) {
       const sample = samples[j]
+      const centerXY = sample.centerPoint.get()
       sorts.push({
-        abs: Math.abs(sample[`m${sortType.toUpperCase()}`]),
+        abs: Math.abs(centerXY[sortType]),
         sample,
-        mapAbs: Math.abs(sample[`m${mapType.toUpperCase()}`])
+        mapAbs: Math.abs(centerXY[mapType])
       })
     }
     quadrant.sorts = sorts.sort((item1, item2) => (item1.abs - item2.abs))

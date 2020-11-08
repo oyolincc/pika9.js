@@ -2,6 +2,7 @@ import Point from './Point'
 import Selection from './Selection'
 import CSYS from './CSYS'
 import throttle from '../utils/throttle'
+import { getStyles } from '../utils/dom'
 
 function setCoverable(options) {
   let holdOn = false
@@ -22,7 +23,7 @@ function setCoverable(options) {
   selection.init(parent)
   // 节流
   const throttledOnHold = onHold ? throttle(threshold, function(csys, point) {
-    onHold(csys.get(point.getX(), point.getY()))
+    onHold(point.get(), csys.get(point))
   }) : () => {}
 
   function mouseDownHandler(e) {
@@ -40,7 +41,7 @@ function setCoverable(options) {
     csys.add(childNodes)
     selection.show()
     holdOn = true
-    onStart && onStart()
+    onStart && onStart(startPoint.get())
   }
 
   function mouseMoveHandler(e) {
@@ -66,7 +67,7 @@ function setCoverable(options) {
     const point = calc(e.clientX, e.clientY)
     selection.hide()
     holdOn = false
-    onEnd && onEnd(csys.get(point.getX(), point.getY()))
+    onEnd && onEnd(point.get(), csys.get(point))
   }
 
   parent.addEventListener('mousedown', mouseDownHandler)
@@ -75,15 +76,14 @@ function setCoverable(options) {
 }
 
 function isOutContent(parent, point) {
-  const x = point.getX()
-  const y = point.getY()
+  const { x, y } = point.get()
   return x <= 0 || y <= 0 || x >= parent.clientWidth + parent.scrollLeft || y >= parent.clientHeight + parent.scrollTop
 }
 
 function getParentCalculator(parent) {
   const pos = parent.getBoundingClientRect()
   const parentCornerPoint = new Point(pos.left, pos.top)
-  const styles = document.defaultView.getComputedStyle(parent, null)
+  const styles = getStyles(parent)
   const borderWidth = styles.borderWidth ? Number(styles.borderWidth.split('px')[0]) : 0
 
   return function(x, y) {

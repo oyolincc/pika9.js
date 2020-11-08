@@ -18,3 +18,17 @@ Point.prototype.setY = function(y) {
 Point.prototype.getY = function() {
   return this._y
 }
+
+Point.prototype.get = function() {
+  return {
+    x: this._x,
+    y: this._y
+  }
+}
+
+Point.prototype.minus = function(point) {
+  return {
+    x: this._x - point.getX(),
+    y: this._y - point.getY()
+  }
+}
