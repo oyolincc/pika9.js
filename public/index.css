@@ -1,0 +1,30 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+.wrapper {
+  width: 600px;
+  height: 600px;
+  border: 1px solid powderblue;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  overflow: auto;
+  display: flex;
+  flex-wrap: wrap;
+  padding: 10px;
+}
+
+.item {
+  width: 120px;
+  height: 120px;
+  /* display: inline-block; */
+  margin: 30px;
+  background-color: salmon;
+}
+
+.coverable-selection {
+  background-color: rgba(46, 139, 87, .3);
+}

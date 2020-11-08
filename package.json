@@ -5,8 +5,9 @@
   "author": "LiNKS <a824759414@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "predev": "rimraf ./dist",
-    "dev": "rollup -w -c"
+    "predev": "rimraf ./dist-demo",
+    "dev": "rollup -w -c --environment TARGET:demo",
+    "build": "rollup -c"
   },
   "devDependencies": {
     "rimraf": "^3.0.2",

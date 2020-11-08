@@ -1,17 +1,16 @@
-// import { terser } from 'rollup-plugin-terser'
-import copy from 'rollup-plugin-copy'
+import { terser } from 'rollup-plugin-terser'
+import demoConfig from './rollup.demo'
 
-export default [{
+const config = process.env.TARGET === 'demo' ? demoConfig : [{
   input: './src/index.js',
   output: {
-    file: './dist/coverable.js',
-    format: 'cjs'
+    file: './dist/coverable.esm.js',
+    format: 'esm',
+    exports: 'default'
   },
   plugins: [
-    copy({
-      targets: [
-        { src: 'public/**/*', dest: 'dist' }
-      ]
-    })
+    terser()
   ]
 }]
+
+export default config
