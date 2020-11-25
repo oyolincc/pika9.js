@@ -6,7 +6,7 @@ html, body {
 .wrapper {
   width: 600px;
   height: 600px;
-  border: 1px solid powderblue;
+  border: 20px solid powderblue;
   position: absolute;
   top: 50%;
   left: 50%;
@@ -18,17 +18,10 @@ html, body {
 }
 
 .item {
-  width: 120px;
-  height: 120px;
+  width: 80px;
+  height: 80px;
   /* display: inline-block; */
   margin: 30px;
   background-color: salmon;
-}
-
-.coverable-selection {
-  background-color: rgba(46, 139, 87, .3);
-}
-
-.coverable-parent--relative {
-  position: relative !important;
+  transition: all .5s;
 }

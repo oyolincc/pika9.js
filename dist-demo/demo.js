@@ -4,93 +4,440 @@ function isDom(node) {
   return typeof node === 'object' && node.nodeType !== undefined
 }
 
-function getStyles(el) {
-  return document.defaultView.getComputedStyle(el, null)
+/**
+ * @param {HTMLElement|Node} element
+ * @param {string} propertyName
+ * @param {boolean} prefixVendor
+ * @return {string}
+ */
+function getStyleProperty(element, propertyName, prefixVendor = false) {
+  if (prefixVendor) {
+    const prefixes = ['', '-webkit-', '-ms-', 'moz-', '-o-'];
+    for (let counter = 0; counter < prefixes.length; counter++) {
+      const prefixedProperty = prefixes[counter] + propertyName;
+      const foundValue = getStyleProperty(element, prefixedProperty);
+
+      if (foundValue) {
+        return foundValue
+      }
+    }
+
+    return ''
+  }
+
+  let propertyValue = '';
+
+  if (element.currentStyle) {
+    propertyValue = element.currentStyle[propertyName];
+  } else if (document.defaultView && document.defaultView.getComputedStyle) {
+    propertyValue = document.defaultView
+      .getComputedStyle(element, null)
+      .getPropertyValue(propertyName);
+  }
+
+  return propertyValue && propertyValue.toLowerCase ? propertyValue.toLowerCase() : propertyValue
 }
 
-// export function
-
-function Point(x, y) {
-  this.setX(x);
-  this.setY(y);
+function getElementNode(selector, parent = document) {
+  const node = isDom(selector) ? selector : (selector && parent.querySelector(selector)) || null;
+  return node.nodeType === 1 ? node : null
 }
 
-Point.prototype.setX = function(x) {
-  this._x = x;
-};
-
-Point.prototype.getX = function() {
-  return this._x
-};
-
-Point.prototype.setY = function(y) {
-  this._y = y;
-};
-
-Point.prototype.getY = function() {
-  return this._y
-};
-
-Point.prototype.get = function() {
-  return {
-    x: this._x,
-    y: this._y
-  }
-};
-
-Point.prototype.minus = function(point) {
-  return {
-    x: this._x - point.getX(),
-    y: this._y - point.getY()
-  }
-};
-
-function Selection() {
-  this.el = null;
-  this._visible = false;
-  this._styleText = '';
+function getElementNodes(selector, parent = document) {
+  const nodes = isDom(selector) ?
+    [selector] : (selector && Array.prototype.slice.call(parent.querySelectorAll(selector))) || [null];
+  return nodes.filter(node => node && node.nodeType === 1)
 }
 
-Selection.prototype.init = function(parent, selectionClassName = 'coverable-selection') {
-  if (!parent) {
-    throw new Error('Selection: invalid parent node')
-  }
-  if (this.el) {
+/**
+ * @param {HTMLElement|Node} el 
+ * @param {string} cName 
+ */
+function hasClass(el, cName) {
+  return new RegExp('(^|\\s)' + cName + '($|\\s)').test(el.className)
+}
+
+/**
+ * @param {HTMLElement|Node} el 
+ * @param {string} cName 
+ */
+function addClass(el, cName) {
+  if (!cName || hasClass(el, cName)) {
     return
   }
-  // 为父元素添加相对定位样式
-  const position = getStyles(parent).position;
-  if (['fixed', 'absolute', 'relative'].indexOf(position) === -1) {
-    parent.classList.add('coverable-parent--relative');
+
+  const elClass = el.className === '' ? ' ' : el.className;
+  if (elClass.charAt(elClass.length - 1) === ' ') {
+    el.className += cName;
+  } else {
+    el.className += (' ' + cName);
+  }
+}
+
+/**
+ * @param {HTMLElement|Node} el 
+ * @param {string} cName 
+ */
+function removeClass(el, cName) {
+  if (!cName) {
+    return ''
   }
 
-  const selection = document.createElement('div');
-  selection.className = selectionClassName;
-  this.el = selection;
-  this._visible = false;
-  parent.appendChild(selection);
+  const classList = el.className.split(/\s+/);
+  let idx = classList.indexOf(cName);
+  if (idx > -1) {
+    classList.splice(idx, 1);
+    el.className = classList.join(' ');
+    return cName
+  }
+
+  return ''
+}
+
+/*!
+ * merge-descriptors
+ * Copyright(c) 2014 Jonathan Ong
+ * Copyright(c) 2015 Douglas Christopher Wilson
+ * MIT Licensed
+ */
+
+/**
+ * Module exports.
+ * @public
+ */
+
+var mergeDescriptors = merge;
+
+/**
+ * Module variables.
+ * @private
+ */
+
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+
+/**
+ * Merge the property descriptors of `src` into `dest`
+ *
+ * @param {object} dest Object to add descriptors to
+ * @param {object} src Object to clone descriptors from
+ * @param {boolean} [redefine=true] Redefine `dest` properties with `src` properties
+ * @returns {object} Reference to dest
+ * @public
+ */
+
+function merge(dest, src, redefine) {
+  if (!dest) {
+    throw new TypeError('argument dest is required')
+  }
+
+  if (!src) {
+    throw new TypeError('argument src is required')
+  }
+
+  if (redefine === undefined) {
+    // Default to true
+    redefine = true;
+  }
+
+  Object.getOwnPropertyNames(src).forEach(function forEachOwnPropertyName(name) {
+    if (!redefine && hasOwnProperty.call(dest, name)) {
+      // Skip desriptor
+      return
+    }
+
+    // Copy descriptor
+    var descriptor = Object.getOwnPropertyDescriptor(src, name);
+    Object.defineProperty(dest, name, descriptor);
+  });
+
+  return dest
+}
+
+/**
+ * 偏移点是否在元素content之外
+ * @param {HTMLElement|Node} element 
+ * @param {object} offsetPoint 
+ */
+function isOutOfContent(element, offsetPoint) {
+  const { x, y } = offsetPoint;
+  return x <= 0 || y <= 0 || x >= element.clientWidth + element.scrollLeft || y >= element.clientHeight + element.scrollTop
+}
+
+/**
+ * 获取元素的顶点坐标，暂时不支持旋转/倾斜拉伸
+ * @param {HTMLElement|Node} element 
+ */
+function getShapePoints(element, offsetX = 0, offsetY = 0) {
+  const rect = element.getBoundingClientRect();
+  const offsetLeft = rect.left + offsetX;
+  const offsetTop = rect.top + offsetY;
+  return [
+    { x: offsetLeft, y: offsetTop },
+    { x: offsetLeft + rect.width, y: offsetTop },
+    { x: offsetLeft + rect.width, y: offsetTop + rect.height },
+    { x: offsetLeft, y: offsetTop + rect.height }
+  ]
+}
+
+// 计算多个点的平均点
+function getAveragePoint(points) {
+  if (!points.length) {
+    return null
+  }
+  const point = points.reduce((totalPoint, point) => {
+    totalPoint.x += point.x;
+    totalPoint.y += point.y;
+    return totalPoint
+  }, { x: 0, y: 0 });
+  point.x /= points.length;
+  point.y /= points.length;
+
+  return point
+}
+
+const noob = () => {};
+
+/**
+ * @param {HTMLElement|Node} target 
+ * @param {Object} callbackOpts 
+ */
+function Holder(target, callbackOpts) {
+  this._init();
+  this.target = target;
+  this._onClick = callbackOpts.onClick || noob;
+  this._onHoldStart = callbackOpts.onHoldStart || noob;
+  this._onHoldMove = callbackOpts.onHoldMove || noob;
+  this._onHoldEnd = callbackOpts.onHoldEnd || noob;
+
+  let getPointInfo = null;
+
+  this._touchStartHandler = (e) => {
+    if (this._isDown || !this._enable) {
+      return
+    }
+
+    const targetRect = this.target.getBoundingClientRect();
+    let borderWidth = getStyleProperty(this.target, 'border-width');
+    borderWidth = borderWidth ? Number(borderWidth.split('px')[0]) : 0;
+
+    getPointInfo = (x, y) => {
+      const contentX = x + this.target.scrollLeft - targetRect.left - borderWidth;
+      const contentY = y + this.target.scrollTop - targetRect.top - borderWidth;
+      return {
+        x,
+        y,
+        contentX,
+        contentY,
+        offsetX: x - contentX,
+        offsetY: y - contentY
+      }
+    };
+
+    const startPoint = getPointInfo(e.clientX, e.clientY);
+    this._startPoint = startPoint;
+    this._activePoint = null;
+
+    // 在边框上触发事件无效
+    if (isOutOfContent(this.target, { x: startPoint.contentX, y: startPoint.contentY })) {
+      return
+    }
+
+    this._prepareEmitStart = () => {
+      this._onHoldStart.call(null, {
+        startPoint,
+        target: this.target
+      });
+    };
+
+    this._isDown = true;
+  };
+
+  this._touchMoveHandler = (e) => {
+    if (!this._isDown || !this._enable) {
+      return
+    }
+
+    if (!this._isHold) {
+      this._isHold = true;
+      // 触发start事件，再触发move事件
+      this._prepareEmitStart();
+      this._prepareEmitStart = null;
+    }
+
+    const activePoint = getPointInfo(e.clientX, e.clientY);
+    this._activePoint = activePoint;
+    this._onHoldMove.call(null, {
+      startPoint: this._startPoint,
+      activePoint,
+      target: this.target
+    });
+  };
+
+  this._touchEndHandler = (e) => {
+    if (!this._isDown || !this._enable) {
+      return
+    }
+
+    this._isDown = false;
+    if (this._isHold) {
+      this._isHold = false;
+      const activePoint = getPointInfo(e.clientX, e.clientY);
+      this._activePoint = activePoint;
+      this._onHoldEnd.call(null, {
+        startPoint: this._startPoint,
+        activePoint,
+        target: this.target
+      });
+    } else {
+      // 只是点击没有发生移动
+      this._onClick.call(null, {
+        activePoint: this._startPoint,
+        target: this.target
+      });
+    }
+    this._prepareEmitStart = null;
+    getPointInfo = null;
+  };
+
+  // 处理在边界外
+  this._onPageMouseUp = (e) => {
+    if (this.enable && this._isHold) {
+      debugger
+      this._touchEndHandler({});
+    }
+  };
+}
+
+Holder.prototype.enable = function () {
+  this._check();
+  this._loadEvents();
+  this._enable = true;
+};
+
+Holder.prototype.disable = function () {
+  this._check();
+  this._enable = false;
+};
+
+Holder.prototype.unload = function() {
+  this._check();
+  this._unloadEvents();
+  this._init();
+  this._unload = true;
+};
+
+Holder.prototype._init = function () {
+  /* 清空数据 */
+  this.target = null;
+  this._listening = false;
+  this._enable = false; // 是否开启监听
+  this._isDown = false; // 鼠标是否已经在目标元素按下
+  this._isHold = false; // 是否正在hold
+  this._startPoint = null;
+  this._activePoint = null;
+  this._unload = false;
+  /* 重置回调函数 */
+  this._onClick = null;
+  this._onHoldStart = null;
+  this._onHoldMove = null;
+  this._onHoldEnd = null;
+};
+
+Holder.prototype._check = function() {
+  if (this._unload) {
+    throw new Error('Holder has been unloaded!')
+  }
+};
+
+Holder.prototype._loadEvents = function() {
+  if (!this._listening) {
+    this._listening = true;
+    this.target.addEventListener('mousedown', this._touchStartHandler);
+    this.target.addEventListener('mousemove', this._touchMoveHandler);
+    this.target.addEventListener('mouseup', this._touchEndHandler);
+    document.addEventListener('mouseup', this._onPageMouseUp);
+  }
+};
+
+Holder.prototype._unloadEvents = function() {
+  if (this._listening) {
+    this.target.removeEventListener('mousedown', this._touchStartHandler);
+    this.target.removeEventListener('mousemove', this._touchMoveHandler);
+    this.target.removeEventListener('mouseup', this._touchEndHandler);
+    document.removeEventListener('mouseup', this._onPageMouseUp);
+    this._listening = false;
+  }
+};
+
+const MAIN_CLASS = 'pika9-selection';
+const PARENT_CLASS = MAIN_CLASS + '-parent';
+const PARENT_RELATIVE_CLASS = PARENT_CLASS + '--relative';
+
+function Selection(parent) {
+  this.el = null;
+  this._parent = parent;
+  this._staticStyle = '';
+
+  // visible响应式改变元素className
+  let visible = undefined;
+  Object.defineProperty(this, '_visible', {
+    enumerable: false,
+    configurable: false,
+    get() {
+      return visible
+    },
+    set(value) {
+      value = !!value;
+      if (value !== visible && this.el) {
+        this.el.style.cssText = value ? this._staticStyle : 'display: none;';
+      }
+      visible = value;
+    }
+  });
+}
+
+Selection.prototype.unmount = function() {
+  this.el && this.el.remove();
+  removeClass(this._parent, PARENT_CLASS);
+  removeClass(this._parent, PARENT_RELATIVE_CLASS);
+};
+
+Selection.prototype.mount = function() {
+  const parent = this._parent;
+  if (!this.el) {
+    const selection = document.createElement('div');
+    selection.className = MAIN_CLASS;
+    this.el = selection;
+    this._visible = false;
+    addClass(parent, PARENT_CLASS);
+  }
+  parent.appendChild(this.el);
 };
 
 Selection.prototype.show = function() {
-  if (!this.el || this._visible) {
-    return
+  // 为父元素添加相对定位样式
+  const parent = this._parent;
+  const position = getStyleProperty(parent, 'position');
+  if (['fixed', 'absolute', 'relative'].indexOf(position) === -1) {
+    addClass(parent, PARENT_RELATIVE_CLASS);
   }
+  
   this._visible = true;
 };
 
 Selection.prototype.hide = function() {
-  if (!this.el || !this._visible) {
-    return
-  }
   this._visible = false;
-  this.el.style.cssText = 'display: none;';
 };
 
-Selection.prototype.update = function(x, y, width, height) {
+Selection.prototype.update = function(left, top, width, height) {
   if (!this.el || !this._visible) {
     return
   }
-  let _styleText = `position: absolute; top: ${y}px; left: ${x}px; `;
+  const styles = [
+    'position: absolute',
+    `top: ${top}px`,
+    `left: ${left}px`
+  ];
   const translations = [];
   if (width < 0) {
     translations.push(`translateX(${width}px)`);
@@ -100,113 +447,130 @@ Selection.prototype.update = function(x, y, width, height) {
     translations.push(`translateY(${height}px)`);
     height = -height;
   }
-  const transformText = translations.length ? ' transform: ' + translations.join(' ') + ';' : '';
-  _styleText = _styleText + `width: ${width}px; height: ${height}px;` + transformText;
-  this._styleText = _styleText;
-  this.el.style.cssText = this._styleText;
+
+  styles.push(`width: ${width}px`);
+  styles.push(`height: ${height}px`);
+
+  if (translations.length) {
+    styles.push('transform: ' + translations.join(' '));
+  }
+
+  const styleText = styles.join('; ');
+  this._staticStyle = styleText;
+  this.el.style.cssText = styleText;
 };
 
-// Coordinate System 坐标系
-function CSYS(originPoint) {
-  if (!(originPoint instanceof Point)) {
-    throw new Error('CSYS: invalid origin point')
-  }
-
-  this._origin = originPoint;
-  this._quadrants = [0, 0, 0, 0].map(() => ({
-    samples: [],
-    sortType: '',
-    sorts: [],
-    x: {
-      total: 0,
-      dispersion: 0 // x方向中心点的离散程度
-    },
-    y: {
-      total: 0,
-      dispersion: 0 // y方向中心点的离散程度
-    }
-  }));
-}
-
-CSYS.prototype.add = function(elements) {
-  if (typeof elements !== 'object') {
-    throw new Error('CSYS: invalid elements')
-  }
-  if (length in elements) {
-    let i = -1;
-    while (++i < elements.length) {
-      this.addElement(elements[i]);
-    }
-  } else {
-    this.addElement(elements);
-  }
-  this.sort();
-};
-
-CSYS.prototype.addElement = function(element) {
-  const centerPoint = new Point(
-    element.offsetLeft - this._origin.getX() + (element.offsetWidth >> 1),
-    element.offsetTop - this._origin.getY() + (element.offsetHeight >> 1)
-  );
-  const item = {
-    centerPoint,
-    element
-  };
-
-  const quadrant = this.getQuadrant(centerPoint);
-  quadrant.samples.push(item);
-  quadrant.x.total += centerPoint.getX();
-  quadrant.y.total += centerPoint.getY();
+const defaultOptions = {
+  parent: null,
+  elements: [] //参与策略的元素
 };
 
 /**
- * 获取原点到点(x, y)的区域覆盖的点
- * @param {Number} x 
- * @param {Number} y 
+ * 基于Coordinate System坐标系的交集策略
+ * @param {object} baseOptions 基本配置
+ * @param {number} offsetX 横向偏移 
+ * @param {number} offsetY 纵向偏移 
  */
-CSYS.prototype.get = function(point) {
-  const { x, y } = point.minus(this._origin);
-  if (!x || !y) {
-    return []
-  }
+function CSYSStrategy(baseOptions, offsetX, offsetY) {
+  baseOptions = mergeDescriptors({ ...defaultOptions }, baseOptions || {});
+  const origin = baseOptions.origin;
+  delete baseOptions.origin;
+  this._options = Object.freeze(baseOptions);
+  this.init(origin, offsetX, offsetY);
+}
 
-  const quadrant = this.getQuadrant(new Point(x, y));
-  let sortAbs = '';
-  let mapAbs = '';
-  if (quadrant.sortType === 'x') {
-    sortAbs = Math.abs(x);
-    mapAbs = Math.abs(y);
+CSYSStrategy.prototype.start = function(startEv) {
+  const { contentX, contentY, offsetX, offsetY } = startEv.startPoint;
+  this.init({ x: contentX, y: contentY }, offsetX, offsetY);
+  this.addElements(this._options.elements);
+};
+
+CSYSStrategy.prototype.hold = function(holdEv) {
+  const point = holdEv.activePoint;
+  return this.getElementsRelative({
+    x: point.contentX,
+    y: point.contentY
+  })
+};
+
+CSYSStrategy.prototype.end = function(endEv) {
+  const point = endEv.activePoint;
+  return this.getElementsRelative({
+    x: point.contentX,
+    y: point.contentY
+  })
+};
+
+CSYSStrategy.prototype.init = function(origin, offsetX, offsetY) {
+  // 坐标原点
+  this._origin = origin || { x: 0, y: 0 };
+  this._offsetX = offsetX || 0;
+  this._offsetY = offsetY || 0;
+  // 象限数据
+  this._quadrants = [0, 0, 0, 0].map(() => ({
+    items: [],
+    sortType: '', // 按x还是y大小的方式排序，有表示已排序
+    x: {
+      total: 0, // 所有中心点横坐标之和
+      dispersion: 0 // x方向中心点的离散程度
+    },
+    y: {
+      total: 0, // 所有中心点纵坐标之和
+      dispersion: 0 // y方向中心点的离散程度
+    }
+  }));
+};
+
+CSYSStrategy.prototype.add = function(element) {
+  // 元素的平均点
+  const averagePoint = getAveragePoint(getShapePoints(element, -this._offsetX, -this._offsetY));
+  const item = {
+    // avgPoint: averagePoint,
+    avgOriginPoint: this._getCSYSPoint(averagePoint),
+    absOriginPoint: null,
+    element
+  };
+  item.absOriginPoint = {
+    x: Math.abs(item.avgOriginPoint.x),
+    y: Math.abs(item.avgOriginPoint.y)
+  };
+
+  const quadrant = this._getQuadrant(item.avgOriginPoint);
+  quadrant.items.push(item);
+  quadrant.sortType = ''; // 清除排序标志
+  quadrant.x.total += item.avgOriginPoint.x;
+  quadrant.y.total += item.avgOriginPoint.y;
+};
+
+CSYSStrategy.prototype.addElements = function(els) {
+  if (els.length !== undefined) {
+    let i = -1;
+    while (++i < els.length) {
+      this.add(els[i]);
+    }
   } else {
-    sortAbs = Math.abs(y);
-    mapAbs = Math.abs(x);
+    this.add(els);
   }
-
-  const result = [];
-  for (let i = 0; i < quadrant.sorts.length; i++) {
-    const item = quadrant.sorts[i];
-    if (item.abs > sortAbs) {
-      // 可以不用继续比较
-      break
-    }
-    if (item.mapAbs <= mapAbs) {
-      result.push(item.sample.element);
-    }
-  }
-
-  return result
 };
 
 // 根据坐标获取象限数据
-CSYS.prototype.getQuadrant = function(point) {
-  const { x, y } = point.get();
-  if (x >= 0) {
-    if (y > 0) {
+CSYSStrategy.prototype._getCSYSPoint = function(point) {
+  return {
+    x: point.x - this._origin.x,
+    y: point.y - this._origin.y
+  }
+};
+
+// 根据基于原点的坐标获取象限数据
+CSYSStrategy.prototype._getQuadrant = function(point) {
+  if (point.x >= 0) {
+    if (point.y > 0) {
       return this._quadrants[0]
     } else {
       return this._quadrants[3]
     }
   } else {
-    if (y > 0) {
+    if (point.y > 0) {
       return this._quadrants[1]
     } else {
       return this._quadrants[2]
@@ -215,46 +579,90 @@ CSYS.prototype.getQuadrant = function(point) {
 };
 
 // 计算离散度
-CSYS.prototype.calcDispersion = function(quadrant, type) {
-  const samples = quadrant.samples;
-  const payload = quadrant[type];
-  const average = payload.total / samples.length;
-  for (let i = 0; i < samples.length; i++) {
-    const sample = samples[i];
-    payload.dispersion += Math.abs(sample.centerPoint.get()[type] - average);
+CSYSStrategy.prototype._calcDispersion = function(quadrant, type) {
+  const items = quadrant.items;
+  const directionInfo = quadrant[type];
+  const average = directionInfo.total / items.length;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    directionInfo.dispersion += Math.abs(item.avgOriginPoint[type] - average);
   }
 };
 
-CSYS.prototype.sort = function() {
+CSYSStrategy.prototype._sort = function() {
   // 计算各个象限的x y方向离散程度；生成排序数组
   for (let i = 0; i < 4; i++) {
-    const quadrant = this._quadrants[i];
-    const samples = quadrant.samples;
-    this.calcDispersion(quadrant, 'x');
-    this.calcDispersion(quadrant, 'y');
-
-    let sortType = '';
-    let mapType = '';
-    const sorts = [];
-    if (quadrant.x.dispersion > quadrant.y.dispersion) {
-      sortType = quadrant.sortType = 'x';
-      mapType = 'y';
-    } else {
-      sortType = quadrant.sortType = 'y';
-      mapType = 'x';
-    }
-
-    for (let j = 0; j < samples.length; j++) {
-      const sample = samples[j];
-      const centerXY = sample.centerPoint.get();
-      sorts.push({
-        abs: Math.abs(centerXY[sortType]),
-        sample,
-        mapAbs: Math.abs(centerXY[mapType])
-      });
-    }
-    quadrant.sorts = sorts.sort((item1, item2) => (item1.abs - item2.abs));
+    this._sortQuadrant(this._quadrants[i]);
   }
+};
+
+// 象限数据进行排序
+CSYSStrategy.prototype._sortQuadrant = function(quadrant) {
+  if (quadrant.sortType) {
+    return
+  }
+
+  const items = quadrant.items;
+  this._calcDispersion(quadrant, 'x');
+  this._calcDispersion(quadrant, 'y');
+
+  let sortType = '';
+  let otherType = '';
+  // 离散程度大的方向遍历能减少查找次数
+  if (quadrant.x.dispersion > quadrant.y.dispersion) {
+    sortType = quadrant.sortType = 'x';
+    otherType = 'y';
+  } else {
+    sortType = quadrant.sortType = 'y';
+    otherType = 'x';
+  }
+
+  items.sort((item1, item2) => {
+    const absPoint1 = item1.absOriginPoint;
+    const absPoint2 = item2.absOriginPoint;
+    return absPoint1[sortType] === absPoint2[sortType] ?
+      absPoint1[otherType] - absPoint2[otherType] : absPoint1[sortType] - absPoint2[sortType]
+  });
+};
+
+CSYSStrategy.prototype.getElementsRelative = function(point) {
+  return this.getElements(this._getCSYSPoint(point))
+};
+
+/**
+ * 获取原点到点point的区域覆盖的元素
+ */
+CSYSStrategy.prototype.getElements = function(point) {
+  const { x, y } = point;
+  if (!x || !y) {
+    return []
+  }
+
+  const quadrant = this._getQuadrant(point);
+  if (!quadrant.sortType) {
+    this._sortQuadrant(quadrant);
+  }
+
+  const absPoint = {
+    x: Math.abs(x),
+    y: Math.abs(y)
+  };
+  const sortType = quadrant.sortType;
+  const otherType = sortType === 'x' ? 'y' : 'x';
+
+  const result = [];
+  for (let i = 0; i < quadrant.items.length; i++) {
+    const item = quadrant.items[i];
+    if (item.absOriginPoint[sortType] > absPoint[sortType]) {
+      // 可以不用继续比较
+      break
+    }
+    if (item.absOriginPoint[otherType] <= absPoint[otherType]) {
+      result.push(item.element);
+    }
+  }
+
+  return result
 };
 
 function throttle (delay, noTrailing, callback, debounceMode) {
@@ -317,139 +725,340 @@ function throttle (delay, noTrailing, callback, debounceMode) {
 	return wrapper
 }
 
-function setCoverable(options) {
-  let holdOn = false;
-  let startPoint = null;
-  let calc = null; // 基于父元素内容的坐标点计算器
-  let csys = null;
-  const {
-    parent,
-    childNodes,
-    threshold,
-    onStart,
-    onHold,
-    onEnd
-  } = options;
+const SELECTED_CLASS = 'pika9-selected';
 
-  // 框选元素初始化
-  const selection = new Selection();
-  selection.init(parent);
-  // 节流
-  const throttledOnHold = onHold ? throttle(threshold, function(csys, point) {
-    onHold(point.get(), csys.get(point));
-  }) : () => {};
-
-  function mouseDownHandler(e) {
-    if (holdOn) {
-      return
-    }
-
-    calc = getParentCalculator(parent);
-    startPoint = calc(e.clientX, e.clientY);
-    if (isOutContent(parent, startPoint)) {
-      return
-    }
-
-    csys = new CSYS(startPoint);
-    csys.add(childNodes);
-    selection.show();
-    holdOn = true;
-    onStart && onStart(startPoint.get());
-  }
-
-  function mouseMoveHandler(e) {
-    if (!holdOn) {
-      return
-    }
-    const point = calc(e.clientX, e.clientY);
-    
-    selection.update(
-      startPoint.getX(),
-      startPoint.getY(),
-      point.getX() - startPoint.getX(),
-      point.getY() - startPoint.getY()
-    );
-
-    throttledOnHold(csys, point);
-  }
-
-  function mouseUpHandler(e) {
-    if (!holdOn) {
-      return
-    }
-    const point = calc(e.clientX, e.clientY);
-    selection.hide();
-    holdOn = false;
-    onEnd && onEnd(point.get(), csys.get(point));
-  }
-
-  parent.addEventListener('mousedown', mouseDownHandler);
-  parent.addEventListener('mousemove', mouseMoveHandler);
-  parent.addEventListener('mouseup', mouseUpHandler);
+function injectControl(Pika9) {
+  Pika9.prototype._onHoldStart = _onHoldStart;
+  Pika9.prototype._onHoldMove = _onHoldMove;
+  Pika9.prototype._onHoldEnd = _onHoldEnd;
+  Pika9.prototype._updateSelection = _updateSelection;
+  Pika9.prototype._resolveSelectedEls = _resolveSelectedEls;
+  Pika9.prototype.clearSelected = clearSelected;
 }
 
-function isOutContent(parent, point) {
-  const { x, y } = point.get();
-  return x <= 0 || y <= 0 || x >= parent.clientWidth + parent.scrollLeft || y >= parent.clientHeight + parent.scrollTop
+function _onHoldStart(ev) {
+  this._holding = true;
+  this._selection.show();
+  if (this._options.mode === 'disposable') {
+    // 一次性选中，清空上次选择
+    this.clearSelected();
+  }
+  // 创建防抖函数
+  const { onHold, threshold } = this._options;
+  this._intersectionStrategy.start(ev);
+  if (!this._throttleHold) {
+    this._throttleHold = throttle(threshold, (holdEv) => {
+      if (!this._holding) {
+        return
+      }
+      // 更新选中
+      const selectedEls = this._intersectionStrategy.hold(holdEv);
+      const { added, removed } = this._resolveSelectedEls(selectedEls);
+      this._recentSelectedEls = selectedEls;
+      onHold.call(null, {
+        start: { ...ev.startPoint },
+        active: { ...ev.activePoint },
+        added,
+        removed
+      });
+    });
+  }
+  const onStart = this._options.onStart;
+  onStart && onStart.call(null, { start: { ...ev.startPoint } });
 }
 
-function getParentCalculator(parent) {
-  const pos = parent.getBoundingClientRect();
-  const parentCornerPoint = new Point(pos.left, pos.top);
-  const styles = getStyles(parent);
-  const borderWidth = styles.borderWidth ? Number(styles.borderWidth.split('px')[0]) : 0;
+function _onHoldMove(ev) {
+  this._updateSelection(ev.startPoint, ev.activePoint);
+  this._throttleHold && this._throttleHold(ev);
+}
 
-  return function(x, y) {
-    return new Point(
-      x + parent.scrollLeft - parentCornerPoint.getX() - borderWidth,
-      y + parent.scrollTop - parentCornerPoint.getY() - borderWidth
-    )
+function _onHoldEnd(ev) {
+  this._holding = false;
+  this._updateSelection(ev.startPoint, ev.activePoint);
+
+  const selectedEls = this._intersectionStrategy.end(ev);
+  const { added, removed, selected } = this._resolveSelectedEls(selectedEls, true);
+  this._curSelectedEls = selected.concat();
+  this._recentSelectedEls = [];
+
+  const onEnd = this._options.onEnd;
+  onEnd && onEnd.call(null, {
+    start: { ...ev.startPoint },
+    active: { ...ev.activePoint },
+    added,
+    removed,
+    selected
+  });
+  this._selection.hide();
+}
+
+/**
+ * 根据起点及活动点更新选择区域
+ * @param {object} startPoint 
+ * @param {object} activePoint 
+ */
+function _updateSelection(startPoint, activePoint) {
+  const contentX1 = startPoint.contentX;
+  const contentY1 = startPoint.contentY;
+  const contentX2 = activePoint.contentX;
+  const contentY2 = activePoint.contentY;
+  this._selection.update(
+    contentX1,
+    contentY1,
+    contentX2 - contentX1,
+    contentY2 - contentY1
+  );
+}
+
+// [2, 4, 7, 8] + [1, 2, 7] = [4, 8], [1] + [2, 7]
+/**
+ * 分析集合数据，返回唯一元素集合和重复元素集合
+ */
+function analyzeSetDiff(set1, set2) {
+  set1 = set1.concat();
+  set2 = set2.concat();
+  const duplicate = [];
+  for (let i = 0; i < set1.length; i++){
+    for (let j = 0; j < set2.length; j++) {
+      if (set1[i] === set2[j]) {
+        duplicate.push(set1[i]);
+        set1.splice(i, 1);
+        set2.splice(j, 1);
+        i--;
+        break
+      }
+    }
+  }
+  return {
+    diff: [set1, set2],
+    duplicate
   }
 }
 
-function Coverable(options) {
+function setSelectedClass(els) {
+  let i = -1;
+  while (++i < els.length) {
+    addClass(els[i], SELECTED_CLASS);
+  }
+}
+
+function removeSelectedClass(els) {
+  let i = -1;
+  while (++i < els.length) {
+    removeClass(els[i], SELECTED_CLASS);
+  }
+}
+
+/**
+ * 解决元素选中效果
+ * @param {Array} els 当前准备用于更新选中结果的元素
+ * @param {Boolean} analyzeNetSelected 是否分析净选择
+ */
+function _resolveSelectedEls(els, analyzeNetSelected) {
+  // 000 保存状态 上一次活动选中状态 本次活动选中状态
+  const diffInfoxxx = analyzeSetDiff(this._recentSelectedEls, els);
+  // const diffInfox11 = analyzeSetDiff(diffInfoxxx.duplicate, this._curSelectedEls)
+  const diffInfox10 = analyzeSetDiff(diffInfoxxx.diff[0], this._curSelectedEls);
+  const diffInfox01 = analyzeSetDiff(diffInfoxxx.diff[1], this._curSelectedEls);
+  // const els111 = diffInfox11.duplicate
+  // const els011 = diffInfox11.diff[0]
+  const els110 = diffInfox10.duplicate;
+  const els010 = diffInfox10.diff[0];
+  const els101 = diffInfox01.duplicate;
+  const els001 = diffInfox01.diff[0];
+  const result = {
+    added: [],
+    removed: []
+  };
+  /**
+   * 根据mode设置当前样式
+   * disposable: 
+   *    新激活: 001 
+   *    取消激活: 010
+   *    当前激活: this._recentSelectedEls
+   * append: 
+   *    新激活: 001
+   *    取消激活: 010
+   *    当前激活: 001 + 011 + 100 + 101 + 110 + 111 (_curSelected 和 els 取并集)
+   * toggle: 
+   *    新激活: 001 + 110
+   *    取消激活: 010 + 101
+   *    当前激活: 001 + 011 + 100 + 110 (_curSelected 和 els 的并集减去两者的交集)
+   *   
+   */
+  const mode = this._options.mode;
+  if (mode === 'disposable' || mode === 'append') {
+    result.added = els001;
+    result.removed = els010;
+    setSelectedClass(result.added);
+    removeSelectedClass(result.removed);
+    if (analyzeNetSelected) {
+      if (mode === 'disposable') {
+        result.selected = this._recentSelectedEls;
+      } else {
+        const diffInfo = analyzeSetDiff(this._curSelectedEls, els);
+        result.selected = diffInfo.diff[0].concat(diffInfo.diff[1]).concat(diffInfo.duplicate);
+      }
+    }
+    return result
+  }
+
+  if (mode === 'toggle') {
+    result.added = els001.concat(els110);
+    result.removed = els010.concat(els101);
+    setSelectedClass(result.added);
+    removeSelectedClass(result.removed);
+    if (analyzeNetSelected) {
+      const diffInfo = analyzeSetDiff(this._curSelectedEls, els);
+      result.selected = diffInfo.diff[0].concat(diffInfo.diff[1]);
+    }
+    return result
+  }
+}
+
+function clearSelected() {
+  removeSelectedClass(this._curSelectedEls);
+  this._curSelectedEls = [];
+}
+
+const initPayload = {
+  _baseMergeOptions: null,
+  _options: null,
+  _intersectionStrategy: null,
+  _selection: null,
+  _holder: null,
+  _throttleHold: null,
+  _recentSelectedEls: [],
+  _curSelectedEls: [],
+  _enable: false,
+  _holding: false
+};
+
+function injectApi(Pika9) {
+  Pika9.prototype.enable = enable;
+  Pika9.prototype.disable = disable;
+  Pika9.prototype.reload = reload;
+  Pika9.prototype.unload = unload;
+}
+
+function enable() {
+  this._enable = true;
+  this._holder.enable();
+}
+
+function disable() {
+  this._enable = false;
+  this._holder.disable();
+}
+
+function reload() {
+  const enable = this._enable;
+  const base = this._baseMergeOptions;
+  this.unload();
+  this._baseMergeOptions = base;
+  this._load();
+  if (enable) {
+    this.enable();
+  }
+}
+
+// 卸载
+function unload() {
+  // 卸载Holder事件
+  this._holder.unload();
+  // 清除选择元素
+  this._selection.unmount();
+  // 清空选中
+  this.clearSelected();
+  mergeDescriptors(this, initPayload);
+}
+
+const defaultOptions$1 = {
+  parent: null, // DOM 或 CSS选择器串
+  children: null, // DOM 或 CSS选择器串数组
+  threshold: 200, // 框选时节流函数间隔
+  onStart: null, // 开始框选时的回调
+  onHold: null, // 保持框选时的鼠标移动回调
+  onEnd: null, // 框选结束回调
+  mode: 'toggle', // disposable: 一次性选择 append: 每次继续追加元素 toggle: toggle
+  clearOnClick: true // 是否在点击时清空选中
+};
+
+function Pika9(options) {
   if (!window || !document) {
-    throw new Error('make sure you run Coverable.js in bowser')
-  }
-  const el = options.parent;
-  const children = options.children;
-  const parent = isDom(el) ? el : document.querySelector(el);
-  let childNodes = null;
-  try {
-    if (typeof children !== 'string') {
-      childNodes = Array.prototype.slice.call(children);
-    } else {
-      childNodes = Array.prototype.slice.call(parent.querySelectorAll(children));
-    }
-  } catch (err) {
-    throw new Error('invalid children nodes')
+    throw new Error('make sure you running Pika9.js in bowser')
   }
 
-  if (!parent || parent.nodeType !== 1) {
+  mergeDescriptors(this, initPayload);
+  this._baseMergeOptions = mergeDescriptors({ ...defaultOptions$1 }, options || {});
+  this._load();
+}
+
+injectControl(Pika9);
+injectApi(Pika9);
+
+// 装载
+Pika9.prototype._load = function() {
+  const options = { ...this._baseMergeOptions };
+  const parentEl = options.parent;
+  const children = options.children;
+  const parent = getElementNode(parentEl);
+  
+  if (!parent) {
     throw new Error('invalid parent node')
   }
 
-  this._options = {
-    parent,
-    childNodes,
-    threshold: options.threshold || 100,
-    onStart: options.onStart || null,
-    onHold: options.onHold || null,
-    onEnd: options.onEnd || null
-  };
-}
+  let childNodes = null;
+  childNodes = getElementNodes(children);
+  if (!childNodes.length) {
+    throw new Error('invalid children nodes')
+  }
 
-Coverable.prototype.init = function() {
-  setCoverable(this._options);
+  options.parent = parent;
+  options.children = childNodes;
+  this._options = Object.freeze(options);
+  // 创建交集策略，决定如何选中元素
+  this._intersectionStrategy = new CSYSStrategy({
+    elements: this._options.children
+  });
+  // 挂载选择区域元素
+  this._selection = new Selection(this._options.parent);
+  this._selection.mount();
+  // 挂载事件
+  this._holder = new Holder(parent, {
+    onClick: () => {
+      // 单击时清空选中
+      if (this._options.clearOnClick) {
+        this.clearSelected();
+      }
+    },
+    onHoldStart: (ev) => {
+      this._onHoldStart(ev);
+    },
+    onHoldMove: (ev) => {
+      this._onHoldMove(ev);
+    },
+    onHoldEnd: (ev) => {
+      this._onHoldEnd(ev);
+    }
+  });
+  this._throttleHold = null;
+  this._selectedElements = [];
+  this._holding = true;
 };
 
-const coverable = new Coverable({
+const pika9 = new Pika9({
   parent: '#wrapper',
   children: '.item',
-  threshold: 1000,
-  onHold: (point, nodes) => {
-    console.log(nodes);
+  mode: 'disposable',
+  threshold: 100,
+  onHold: (e) => {
+    // console.log(e.added)
+  },
+  onEnd: (e) => {
+    console.log(e.selected);
   }
 });
 
-coverable.init();
+pika9.enable();
+// pika9.reload()

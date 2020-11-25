@@ -1,12 +1,17 @@
-import Coverable from './index'
+import Pika9 from './index'
 
-const coverable = new Coverable({
+const pika9 = new Pika9({
   parent: '#wrapper',
   children: '.item',
-  threshold: 1000,
-  onHold: (point, nodes) => {
-    console.log(nodes)
+  mode: 'disposable',
+  threshold: 100,
+  onHold: (e) => {
+    // console.log(e.added)
+  },
+  onEnd: (e) => {
+    console.log(e.selected)
   }
 })
 
-coverable.init()
+pika9.enable()
+// pika9.reload()

@@ -1,18 +1,24 @@
 {
-  "name": "coverable",
+  "name": "pika9",
   "version": "1.0.0",
-  "main": "dist/coverable.js",
+  "main": "dist/pika9.js",
   "author": "LiNKS <a824759414@gmail.com>",
   "license": "MIT",
   "scripts": {
     "predev": "rimraf ./dist-demo",
+    "prebuild": "rimraf ./dist",
     "dev": "rollup -w -c --environment TARGET:demo",
     "build": "rollup -c"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^16.0.0",
+    "@rollup/plugin-node-resolve": "^10.0.0",
     "rimraf": "^3.0.2",
     "rollup": "^2.33.1",
     "rollup-plugin-copy": "^3.3.0",
     "rollup-plugin-terser": "^7.0.2"
+  },
+  "dependencies": {
+    "merge-descriptors": "^1.0.1"
   }
 }
