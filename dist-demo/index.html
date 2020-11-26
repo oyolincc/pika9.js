@@ -9,28 +9,23 @@
 </head>
 <body>
   <div id="wrapper" class="wrapper">
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
   </div>
+  <script>
+    const frag = document.createDocumentFragment()
+    for (let i = 0; i < 10; i++) {
+      for (let j = 0; j < 12; j++) {
+        const left = Math.random() * 20 + 50 * j
+        const top = Math.random() * 20 + 60 * i
+        const width = Math.random() * 30 + 30
+        const height = Math.random() * 30 + 30
+        const div = document.createElement('div')
+        div.className = 'item'
+        div.style.cssText = `position: absolute; width: ${width}px; height: ${height}px; left: ${left}px; top: ${top}px;`
+        frag.appendChild(div)
+      }
+    }
+    document.getElementById('wrapper').appendChild(frag)
+  </script>
   <script src="./demo.js"></script>
 </body>
 </html>

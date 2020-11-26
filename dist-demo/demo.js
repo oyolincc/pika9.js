@@ -1050,7 +1050,7 @@ Pika9.prototype._load = function() {
 const pika9 = new Pika9({
   parent: '#wrapper',
   children: '.item',
-  mode: 'disposable',
+  mode: 'toggle',
   threshold: 100,
   onHold: (e) => {
     // console.log(e.added)

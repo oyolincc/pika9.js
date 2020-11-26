@@ -18,10 +18,11 @@ html, body {
 }
 
 .item {
-  width: 80px;
-  height: 80px;
+  /* width: 80px;
+  height: 80px; */
+  border: 2px solid black;
   /* display: inline-block; */
-  margin: 30px;
+  /* margin: 30px; */
   background-color: salmon;
   transition: all .5s;
 }
