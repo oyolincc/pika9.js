@@ -31,7 +31,7 @@ function _onHoldStart(ev) {
       const selectedEls = this._intersectionStrategy.hold(holdEv)
       const { added, removed } = this._resolveSelectedEls(selectedEls)
       this._recentSelectedEls = selectedEls
-      onHold.call(null, {
+      onHold && onHold.call(null, {
         start: { ...ev.startPoint },
         active: { ...ev.activePoint },
         added,
