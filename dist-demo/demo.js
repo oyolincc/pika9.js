@@ -154,16 +154,6 @@ function merge(dest, src, redefine) {
 }
 
 /**
- * 偏移点是否在元素content之外
- * @param {HTMLElement|Node} element 
- * @param {object} offsetPoint 
- */
-function isOutOfContent(element, offsetPoint) {
-  const { x, y } = offsetPoint;
-  return x <= 0 || y <= 0 || x >= element.clientWidth + element.scrollLeft || y >= element.clientHeight + element.scrollTop
-}
-
-/**
  * 获取元素的顶点坐标，暂时不支持旋转/倾斜拉伸
  * @param {HTMLElement|Node} element 
  */
@@ -197,6 +187,18 @@ function getAveragePoint(points) {
 
 const noob = () => {};
 
+function createEventInfo(startPoint, activePoint, e) {
+  const info = {
+    startPoint,
+    target: e.target || e.srcElement,
+    currentTaget: e.currentTaget
+  };
+  if (activePoint) {
+    info.activePoint = activePoint;
+  }
+  return info
+}
+
 /**
  * @param {HTMLElement|Node} target 
  * @param {Object} callbackOpts 
@@ -209,20 +211,32 @@ function Holder(target, callbackOpts) {
   this._onHoldMove = callbackOpts.onHoldMove || noob;
   this._onHoldEnd = callbackOpts.onHoldEnd || noob;
 
+  let targetPoints = null;
   let getPointInfo = null;
+  let borderWidth = 0;
 
   this._touchStartHandler = (e) => {
     if (this._isDown || !this._enable) {
       return
     }
 
-    const targetRect = this.target.getBoundingClientRect();
-    let borderWidth = getStyleProperty(this.target, 'border-width');
+    targetPoints = getShapePoints(this.target);
+    borderWidth = getStyleProperty(this.target, 'border-width');
     borderWidth = borderWidth ? Number(borderWidth.split('px')[0]) : 0;
 
+    // 在边框上触发事件无效
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x <= targetPoints[0].x + borderWidth || x >= targetPoints[1].x - borderWidth) {
+      return
+    }
+    if (y <= targetPoints[0].y + borderWidth || y >= targetPoints[3].y - borderWidth) {
+      return
+    }
+
     getPointInfo = (x, y) => {
-      const contentX = x + this.target.scrollLeft - targetRect.left - borderWidth;
-      const contentY = y + this.target.scrollTop - targetRect.top - borderWidth;
+      const contentX = x + this.target.scrollLeft - targetPoints[0].x - borderWidth;
+      const contentY = y + this.target.scrollTop - targetPoints[0].y - borderWidth;
       return {
         x,
         y,
@@ -233,20 +247,12 @@ function Holder(target, callbackOpts) {
       }
     };
 
-    const startPoint = getPointInfo(e.clientX, e.clientY);
+    const startPoint = getPointInfo(x, y);
     this._startPoint = startPoint;
     this._activePoint = null;
 
-    // 在边框上触发事件无效
-    if (isOutOfContent(this.target, { x: startPoint.contentX, y: startPoint.contentY })) {
-      return
-    }
-
     this._prepareEmitStart = () => {
-      this._onHoldStart.call(null, {
-        startPoint,
-        target: this.target
-      });
+      this._onHoldStart.call(null, createEventInfo(startPoint, null, e));
     };
 
     this._isDown = true;
@@ -266,11 +272,7 @@ function Holder(target, callbackOpts) {
 
     const activePoint = getPointInfo(e.clientX, e.clientY);
     this._activePoint = activePoint;
-    this._onHoldMove.call(null, {
-      startPoint: this._startPoint,
-      activePoint,
-      target: this.target
-    });
+    this._onHoldMove.call(null, createEventInfo(this._startPoint, activePoint, e));
   };
 
   this._touchEndHandler = (e) => {
@@ -281,29 +283,30 @@ function Holder(target, callbackOpts) {
     this._isDown = false;
     if (this._isHold) {
       this._isHold = false;
-      const activePoint = getPointInfo(e.clientX, e.clientY);
+      let x = e.clientX;
+      let y = e.clientY;
+      // 鼠标在外结束的处理
+      x = Math.min(x, targetPoints[1].x - borderWidth);
+      x = Math.max(x, targetPoints[0].x + borderWidth);
+      y = Math.min(y, targetPoints[3].y - borderWidth);
+      y = Math.max(y, targetPoints[0].y + borderWidth);
+      const activePoint = getPointInfo(x, y);
       this._activePoint = activePoint;
-      this._onHoldEnd.call(null, {
-        startPoint: this._startPoint,
-        activePoint,
-        target: this.target
-      });
+      this._onHoldEnd.call(null, createEventInfo(this._startPoint, activePoint, e));
     } else {
       // 只是点击没有发生移动
-      this._onClick.call(null, {
-        activePoint: this._startPoint,
-        target: this.target
-      });
+      this._onClick.call(null, createEventInfo(this._startPoint, null, e));
     }
     this._prepareEmitStart = null;
     getPointInfo = null;
+    targetPoints = null;
+    borderWidth = 0;
   };
 
   // 处理在边界外
-  this._onPageMouseUp = (e) => {
-    if (this.enable && this._isHold) {
-      debugger
-      this._touchEndHandler({});
+  this._onOutsideMouseUp = (e) => {
+    if (this._enable) {
+      this._touchEndHandler(e);
     }
   };
 }
@@ -355,7 +358,7 @@ Holder.prototype._loadEvents = function() {
     this.target.addEventListener('mousedown', this._touchStartHandler);
     this.target.addEventListener('mousemove', this._touchMoveHandler);
     this.target.addEventListener('mouseup', this._touchEndHandler);
-    document.addEventListener('mouseup', this._onPageMouseUp);
+    document.addEventListener('mouseup', this._onOutsideMouseUp);
   }
 };
 
@@ -364,7 +367,7 @@ Holder.prototype._unloadEvents = function() {
     this.target.removeEventListener('mousedown', this._touchStartHandler);
     this.target.removeEventListener('mousemove', this._touchMoveHandler);
     this.target.removeEventListener('mouseup', this._touchEndHandler);
-    document.removeEventListener('mouseup', this._onPageMouseUp);
+    document.removeEventListener('mouseup', this._onOutsideMouseUp);
     this._listening = false;
   }
 };
@@ -755,7 +758,7 @@ function _onHoldStart(ev) {
       const selectedEls = this._intersectionStrategy.hold(holdEv);
       const { added, removed } = this._resolveSelectedEls(selectedEls);
       this._recentSelectedEls = selectedEls;
-      onHold.call(null, {
+      onHold && onHold.call(null, {
         start: { ...ev.startPoint },
         active: { ...ev.activePoint },
         added,
