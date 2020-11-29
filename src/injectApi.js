@@ -1,4 +1,4 @@
-import merge from 'merge-descriptors'
+import merge from './utils/merge'
 
 export const initPayload = {
   _baseMergeOptions: null,

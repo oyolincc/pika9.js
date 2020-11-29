@@ -9,6 +9,7 @@ export default function injectControl(Pika9) {
   Pika9.prototype._onHoldEnd = _onHoldEnd
   Pika9.prototype._updateSelection = _updateSelection
   Pika9.prototype._resolveSelectedEls = _resolveSelectedEls
+  Pika9.prototype.getSelected = getSelected
   Pika9.prototype.clearSelected = clearSelected
 }
 
@@ -192,7 +193,14 @@ function _resolveSelectedEls(els, analyzeNetSelected) {
   }
 }
 
+function getSelected() {
+  return this._curSelectedEls.concat()
+}
+
 function clearSelected() {
+  if (!this._curSelectedEls.length) {
+    return
+  }
   removeSelectedClass(this._curSelectedEls)
   this._curSelectedEls = []
 }

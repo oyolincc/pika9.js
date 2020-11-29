@@ -7,7 +7,7 @@ function createEventInfo(startPoint, activePoint, e) {
   const info = {
     startPoint,
     target: e.target || e.srcElement,
-    currentTaget: e.currentTaget
+    currentTarget: e.currentTarget
   }
   if (activePoint) {
     info.activePoint = activePoint

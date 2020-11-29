@@ -1,5 +1,5 @@
 import { getElementNode, getElementNodes } from './utils/dom'
-import merge from 'merge-descriptors'
+import merge from './utils/merge'
 import Holder from './core/Holder'
 import Selection from './core/Selection'
 import CSYSStrategy from './core/strategy/CSYSStrategy'
@@ -13,6 +13,7 @@ const defaultOptions = {
   onStart: null, // 开始框选时的回调
   onHold: null, // 保持框选时的鼠标移动回调
   onEnd: null, // 框选结束回调
+  onChange: null, // 选择结果变化的回调
   mode: 'toggle', // disposable: 一次性选择 append: 每次继续追加元素 toggle: toggle
   clearOnClick: true // 是否在点击时清空选中
 }
@@ -24,6 +25,8 @@ function Pika9(options) {
 
   merge(this, initPayload)
   this._baseMergeOptions = merge({ ...defaultOptions }, options || {})
+  
+  // Object.defineProperty(this, '_curSelectedEls', )
   this._load()
 }
 
@@ -59,9 +62,13 @@ Pika9.prototype._load = function() {
   this._selection.mount()
   // 挂载事件
   this._holder = new Holder(parent, {
-    onClick: () => {
+    onClick: (ev) => {
       // 单击时清空选中
-      if (this._options.clearOnClick) {
+      if (this._options.children.indexOf(ev.target) > -1) {
+        const { selected } = this._resolveSelectedEls([ev.target], true)
+        this._curSelectedEls = selected
+        this._recentSelectedEls = []
+      } else if (this._options.clearOnClick) {
         this.clearSelected()
       }
     },

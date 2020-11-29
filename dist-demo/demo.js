@@ -94,61 +94,15 @@ function removeClass(el, cName) {
   return ''
 }
 
-/*!
- * merge-descriptors
- * Copyright(c) 2014 Jonathan Ong
- * Copyright(c) 2015 Douglas Christopher Wilson
- * MIT Licensed
- */
-
-/**
- * Module exports.
- * @public
- */
-
-var mergeDescriptors = merge;
-
-/**
- * Module variables.
- * @private
- */
-
-var hasOwnProperty = Object.prototype.hasOwnProperty;
-
-/**
- * Merge the property descriptors of `src` into `dest`
- *
- * @param {object} dest Object to add descriptors to
- * @param {object} src Object to clone descriptors from
- * @param {boolean} [redefine=true] Redefine `dest` properties with `src` properties
- * @returns {object} Reference to dest
- * @public
- */
-
-function merge(dest, src, redefine) {
-  if (!dest) {
-    throw new TypeError('argument dest is required')
-  }
-
-  if (!src) {
-    throw new TypeError('argument src is required')
-  }
-
-  if (redefine === undefined) {
-    // Default to true
-    redefine = true;
-  }
-
-  Object.getOwnPropertyNames(src).forEach(function forEachOwnPropertyName(name) {
-    if (!redefine && hasOwnProperty.call(dest, name)) {
-      // Skip desriptor
-      return
+function merge(dest, src, redefine = true) {
+  const props = Object.getOwnPropertyNames(src);
+  for (let i = 0; i < props.length; i++) {
+    const prop = props[i];
+    if (!redefine && Object.prototype.hasOwnProperty.call(dest, prop)) {
+      continue
     }
-
-    // Copy descriptor
-    var descriptor = Object.getOwnPropertyDescriptor(src, name);
-    Object.defineProperty(dest, name, descriptor);
-  });
+    dest[prop] = src[prop];
+  }
 
   return dest
 }
@@ -191,7 +145,7 @@ function createEventInfo(startPoint, activePoint, e) {
   const info = {
     startPoint,
     target: e.target || e.srcElement,
-    currentTaget: e.currentTaget
+    currentTarget: e.currentTarget
   };
   if (activePoint) {
     info.activePoint = activePoint;
@@ -462,6 +416,65 @@ Selection.prototype.update = function(left, top, width, height) {
   this._staticStyle = styleText;
   this.el.style.cssText = styleText;
 };
+
+/*!
+ * merge-descriptors
+ * Copyright(c) 2014 Jonathan Ong
+ * Copyright(c) 2015 Douglas Christopher Wilson
+ * MIT Licensed
+ */
+
+/**
+ * Module exports.
+ * @public
+ */
+
+var mergeDescriptors = merge$1;
+
+/**
+ * Module variables.
+ * @private
+ */
+
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+
+/**
+ * Merge the property descriptors of `src` into `dest`
+ *
+ * @param {object} dest Object to add descriptors to
+ * @param {object} src Object to clone descriptors from
+ * @param {boolean} [redefine=true] Redefine `dest` properties with `src` properties
+ * @returns {object} Reference to dest
+ * @public
+ */
+
+function merge$1(dest, src, redefine) {
+  if (!dest) {
+    throw new TypeError('argument dest is required')
+  }
+
+  if (!src) {
+    throw new TypeError('argument src is required')
+  }
+
+  if (redefine === undefined) {
+    // Default to true
+    redefine = true;
+  }
+
+  Object.getOwnPropertyNames(src).forEach(function forEachOwnPropertyName(name) {
+    if (!redefine && hasOwnProperty.call(dest, name)) {
+      // Skip desriptor
+      return
+    }
+
+    // Copy descriptor
+    var descriptor = Object.getOwnPropertyDescriptor(src, name);
+    Object.defineProperty(dest, name, descriptor);
+  });
+
+  return dest
+}
 
 const defaultOptions = {
   parent: null,
@@ -736,6 +749,7 @@ function injectControl(Pika9) {
   Pika9.prototype._onHoldEnd = _onHoldEnd;
   Pika9.prototype._updateSelection = _updateSelection;
   Pika9.prototype._resolveSelectedEls = _resolveSelectedEls;
+  Pika9.prototype.getSelected = getSelected;
   Pika9.prototype.clearSelected = clearSelected;
 }
 
@@ -919,7 +933,14 @@ function _resolveSelectedEls(els, analyzeNetSelected) {
   }
 }
 
+function getSelected() {
+  return this._curSelectedEls.concat()
+}
+
 function clearSelected() {
+  if (!this._curSelectedEls.length) {
+    return
+  }
   removeSelectedClass(this._curSelectedEls);
   this._curSelectedEls = [];
 }
@@ -973,7 +994,7 @@ function unload() {
   this._selection.unmount();
   // 清空选中
   this.clearSelected();
-  mergeDescriptors(this, initPayload);
+  merge(this, initPayload);
 }
 
 const defaultOptions$1 = {
@@ -983,6 +1004,7 @@ const defaultOptions$1 = {
   onStart: null, // 开始框选时的回调
   onHold: null, // 保持框选时的鼠标移动回调
   onEnd: null, // 框选结束回调
+  onChange: null, // 选择结果变化的回调
   mode: 'toggle', // disposable: 一次性选择 append: 每次继续追加元素 toggle: toggle
   clearOnClick: true // 是否在点击时清空选中
 };
@@ -992,8 +1014,10 @@ function Pika9(options) {
     throw new Error('make sure you running Pika9.js in bowser')
   }
 
-  mergeDescriptors(this, initPayload);
-  this._baseMergeOptions = mergeDescriptors({ ...defaultOptions$1 }, options || {});
+  merge(this, initPayload);
+  this._baseMergeOptions = merge({ ...defaultOptions$1 }, options || {});
+  
+  // Object.defineProperty(this, '_curSelectedEls', )
   this._load();
 }
 
@@ -1029,9 +1053,13 @@ Pika9.prototype._load = function() {
   this._selection.mount();
   // 挂载事件
   this._holder = new Holder(parent, {
-    onClick: () => {
+    onClick: (ev) => {
       // 单击时清空选中
-      if (this._options.clearOnClick) {
+      if (this._options.children.indexOf(ev.target) > -1) {
+        const { selected } = this._resolveSelectedEls([ev.target], true);
+        this._curSelectedEls = selected;
+        this._recentSelectedEls = [];
+      } else if (this._options.clearOnClick) {
         this.clearSelected();
       }
     },
