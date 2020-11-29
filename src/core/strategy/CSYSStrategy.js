@@ -1,4 +1,4 @@
-import merge from 'merge-descriptors'
+import merge from '../../utils/merge'
 import { getShapePoints, getAveragePoint } from '../../utils/position'
 
 const defaultOptions = {

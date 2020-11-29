@@ -65,9 +65,7 @@ Pika9.prototype._load = function() {
     onClick: (ev) => {
       // 单击时清空选中
       if (this._options.children.indexOf(ev.target) > -1) {
-        const { selected } = this._resolveSelectedEls([ev.target], true)
-        this._curSelectedEls = selected
-        this._recentSelectedEls = []
+        this._resolveCurSelected([ev.target])
       } else if (this._options.clearOnClick) {
         this.clearSelected()
       }

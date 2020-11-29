@@ -9,6 +9,7 @@ export default function injectControl(Pika9) {
   Pika9.prototype._onHoldEnd = _onHoldEnd
   Pika9.prototype._updateSelection = _updateSelection
   Pika9.prototype._resolveSelectedEls = _resolveSelectedEls
+  Pika9.prototype._resolveCurSelected = _resolveCurSelected
   Pika9.prototype.getSelected = getSelected
   Pika9.prototype.clearSelected = clearSelected
 }
@@ -55,7 +56,7 @@ function _onHoldEnd(ev) {
 
   const selectedEls = this._intersectionStrategy.end(ev)
   const { added, removed, selected } = this._resolveSelectedEls(selectedEls, true)
-  this._curSelectedEls = selected.concat()
+  this._resolveCurSelected({ added: added.concat(), removed: removed.concat(), selected: selected.concat() })
   this._recentSelectedEls = []
 
   const onEnd = this._options.onEnd
@@ -172,9 +173,11 @@ function _resolveSelectedEls(els, analyzeNetSelected) {
     if (analyzeNetSelected) {
       if (mode === 'disposable') {
         result.selected = this._recentSelectedEls
+        result.added = result.selected.concat()
       } else {
         const diffInfo = analyzeSetDiff(this._curSelectedEls, els)
         result.selected = diffInfo.diff[0].concat(diffInfo.diff[1]).concat(diffInfo.duplicate)
+        result.added = diffInfo.diff[1]
       }
     }
     return result
@@ -188,9 +191,37 @@ function _resolveSelectedEls(els, analyzeNetSelected) {
     if (analyzeNetSelected) {
       const diffInfo = analyzeSetDiff(this._curSelectedEls, els)
       result.selected = diffInfo.diff[0].concat(diffInfo.diff[1])
+      result.added = diffInfo.diff[1]
+      result.removed = diffInfo.duplicate
     }
     return result
   }
+}
+
+function _resolveCurSelected(els) {
+  let added = null
+  let removed = null
+  let selected = null
+  const onChange = this._options.onChange
+  if (Object.prototype.toString.call(els) === '[object Object]') {
+    added = els.added
+    removed = els.removed
+    selected = els.selected
+  } else if (onChange) {
+    const info = this._resolveSelectedEls(els, true)
+    this._recentSelectedEls = []
+    added = info.added
+    removed = info.removed
+    selected = info.selected
+  } else {
+    selected = els
+  }
+  this._curSelectedEls = selected
+  onChange && onChange.call(null, {
+    added,
+    removed,
+    selected: selected.concat()
+  })
 }
 
 function getSelected() {
@@ -201,6 +232,13 @@ function clearSelected() {
   if (!this._curSelectedEls.length) {
     return
   }
-  removeSelectedClass(this._curSelectedEls)
+  const onChange = this._options.onChange
+  const removed = this._curSelectedEls
+  removeSelectedClass(removed)
   this._curSelectedEls = []
+  onChange && onChange.call(null, {
+    added: [],
+    removed,
+    selected: []
+  })
 }

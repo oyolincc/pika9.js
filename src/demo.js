@@ -5,12 +5,7 @@ const pika9 = new Pika9({
   children: '.item',
   mode: 'toggle',
   threshold: 100,
-  onHold: (e) => {
-    // console.log(e.added)
-  },
-  onEnd: (e) => {
-    console.log(e.selected)
-  }
+  onChange: ev => console.log(ev)
 })
 
 pika9.enable()
