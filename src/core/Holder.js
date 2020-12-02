@@ -121,7 +121,7 @@ export default function Holder(target, callbackOpts) {
 
   // 处理在边界外
   this._onOutsideMouseUp = (e) => {
-    if (this._enable) {
+    if (this._isHold && this._enable) {
       this._touchEndHandler(e)
     }
   }
