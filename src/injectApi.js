@@ -1,8 +1,8 @@
-import merge from './utils/merge'
+import { getElementNodes } from './utils/dom'
+import { merge, flatten } from './utils/util'
+import CSYSStrategy from './core/strategy/CSYSStrategy'
 
 export const initPayload = {
-  _baseMergeOptions: null,
-  _options: null,
   _intersectionStrategy: null,
   _selection: null,
   _holder: null,
@@ -14,10 +14,26 @@ export const initPayload = {
 }
 
 export default function injectApi(Pika9) {
+  Pika9.prototype.setSelectable = setSelectable
   Pika9.prototype.enable = enable
   Pika9.prototype.disable = disable
   Pika9.prototype.reload = reload
   Pika9.prototype.unload = unload
+}
+
+function setSelectable(children) {
+  let childNodes = []
+  const flattenChildren = flatten(children)
+  for (let i = 0; i < flattenChildren.length; i++) {
+    const el = getElementNodes(flattenChildren[i])
+    el && childNodes.push(el)
+  }
+
+  this._children = flatten(childNodes)
+  // 创建交集策略，决定如何选中元素
+  this._intersectionStrategy = new CSYSStrategy({
+    elements: this._children
+  })
 }
 
 function enable() {
@@ -32,9 +48,7 @@ function disable() {
 
 function reload() {
   const enable = this._enable
-  const base = this._baseMergeOptions
   this.unload()
-  this._baseMergeOptions = base
   this._load()
   if (enable) {
     this.enable()

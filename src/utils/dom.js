@@ -45,14 +45,39 @@ export function getStyleProperty(element, propertyName, prefixVendor = false) {
 }
 
 export function getElementNode(selector, parent = document) {
-  const node = isDom(selector) ? selector : (selector && parent.querySelector(selector)) || null
-  return node.nodeType === 1 ? node : null
+  if (!selector) {
+    return null
+  }
+
+  if (isDom(selector)) {
+    return selector.nodeType === 1 ? selector : null
+  }
+
+  try {
+    const node = parent.querySelector(selector)
+    return node && node.nodeType === 1 ? node : null
+  } catch (err) {
+    console.warn(err)
+    return null
+  }
 }
 
 export function getElementNodes(selector, parent = document) {
-  const nodes = isDom(selector) ?
-    [selector] : (selector && Array.prototype.slice.call(parent.querySelectorAll(selector))) || [null]
-  return nodes.filter(node => node && node.nodeType === 1)
+  if (!selector) {
+    return []
+  }
+
+  if (isDom(selector)) {
+    return selector.nodeType === 1 ? [selector] : []
+  }
+
+  try {
+    const nodes = Array.prototype.slice.call(parent.querySelectorAll(selector))
+    return nodes.filter(node => node && node.nodeType === 1)
+  } catch (err) {
+    console.warn(err)
+    return []
+  }
 }
 
 /**

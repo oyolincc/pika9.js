@@ -1,4 +1,4 @@
-import merge from '../../utils/merge'
+import { merge } from '../../utils/util'
 import { getShapePoints, getAveragePoint } from '../../utils/position'
 
 const defaultOptions = {
