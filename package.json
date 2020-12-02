@@ -1,8 +1,10 @@
 {
   "name": "pika9",
   "version": "1.0.0",
-  "main": "dist/pika9.js",
+  "main": "dist/pika9.common.js",
+  "module": "dist/pika9.esm.js",
   "author": "LiNKS <a824759414@gmail.com>",
+  "files": ["dist/"],
   "license": "MIT",
   "scripts": {
     "predev": "rimraf ./dist-demo",

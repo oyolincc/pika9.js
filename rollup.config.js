@@ -23,11 +23,18 @@ const demoConfig = [{
 
 const coreConfig = [{
   input: './src/index.js',
-  output: {
-    file: './dist/pika9.min.js',
-    format: 'cjs',
-    exports: 'default'
-  },
+  output: [
+    {
+      file: './dist/pika9.common.js',
+      format: 'cjs',
+      exports: 'auto'
+    },
+    {
+      file: './dist/pika9.esm.js',
+      format: 'esm',
+      exports: 'default'
+    }
+  ],
   plugins: [
     terser(),
     copy({ targets: [{ src: 'public/pika9.css', dest: 'dist' }] }),
