@@ -1,11 +1,11 @@
+
 export function merge(dest, src, byDest = false) {
   const props = Object.getOwnPropertyNames(src)
   for (let i = 0; i < props.length; i++) {
     const prop = props[i]
-    if (byDest && !Object.prototype.hasOwnProperty.call(dest, prop)) {
-      continue
+    if (!byDest || Object.prototype.hasOwnProperty.call(dest, prop)) {
+      dest[prop] = src[prop]
     }
-    dest[prop] = src[prop]
   }
 
   return dest

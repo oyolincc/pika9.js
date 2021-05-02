@@ -1,14 +1,3 @@
-
-/**
- * 偏移点是否在元素content之外
- * @param {HTMLElement|Node} element 
- * @param {object} offsetPoint 
- */
-export function isOutOfContent(element, offsetPoint) {
-  const { x, y } = offsetPoint
-  return x <= 0 || y <= 0 || x >= element.clientWidth + element.scrollLeft || y >= element.clientHeight + element.scrollTop
-}
-
 /**
  * 获取元素的顶点坐标，暂时不支持旋转/倾斜拉伸
  * @param {HTMLElement|Node} element 
@@ -39,4 +28,32 @@ export function getAveragePoint(points) {
   point.y /= points.length
 
   return point
+}
+
+export function toArea(sp, ap) {
+  let minX = 0, minY = 0, maxX = 0, maxY = 0
+  if (sp.x > ap.x) {
+    minX = ap.x
+    maxX = sp.x
+  } else {
+    minX = sp.x
+    maxX = ap.x
+  }
+  if (sp.y > ap.y) {
+    minY = ap.y
+    maxY = sp.y
+  } else {
+    minY = sp.y
+    maxY = ap.y
+  }
+  return [
+    { x: minX, y: minY },
+    { x: maxX, y: minY },
+    { x: maxX, y: maxY },
+    { x: minX, y: maxY }
+  ]
+}
+
+export function isSamePoint(point1, point2) {
+  return point1 === point2 || (point1.x === point2.x && point1.y === point2.y)
 }

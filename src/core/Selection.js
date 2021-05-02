@@ -3,14 +3,15 @@ import {
   addClass,
   removeClass
 } from '../utils/dom'
-
-const MAIN_CLASS = 'pika9-selection'
-const PARENT_CLASS = MAIN_CLASS + '-parent'
-const PARENT_RELATIVE_CLASS = PARENT_CLASS + '--relative'
+import {
+  MAIN_CLASS,
+  PARENT_CLASS,
+  PARENT_RELATIVE_CLASS
+} from '../const'
 
 export default function Selection(parent) {
   this.el = null
-  this._parent = parent
+  this.parent = parent
   this._staticStyle = ''
 
   // visible响应式改变元素className
@@ -33,30 +34,31 @@ export default function Selection(parent) {
 
 Selection.prototype.unmount = function() {
   this.el && this.el.remove()
-  removeClass(this._parent, PARENT_CLASS)
-  removeClass(this._parent, PARENT_RELATIVE_CLASS)
+  removeClass(this.parent, PARENT_CLASS)
+  removeClass(this.parent, PARENT_RELATIVE_CLASS)
 }
 
 Selection.prototype.mount = function() {
-  const parent = this._parent
-  if (!this.el) {
-    const selection = document.createElement('div')
-    selection.className = MAIN_CLASS
-    this.el = selection
-    this._visible = false
-    addClass(parent, PARENT_CLASS)
+  if (this.el) {
+    return
   }
+  const parent = this.parent
+  const selection = document.createElement('div')
+  selection.className = MAIN_CLASS
+  this.el = selection
+  this._visible = false
+  addClass(parent, PARENT_CLASS)
   parent.appendChild(this.el)
 }
 
 Selection.prototype.show = function() {
   // 为父元素添加相对定位样式
-  const parent = this._parent
+  const parent = this.parent
   const position = getStyleProperty(parent, 'position')
   if (['fixed', 'absolute', 'relative'].indexOf(position) === -1) {
     addClass(parent, PARENT_RELATIVE_CLASS)
   }
-  
+
   this._visible = true
 }
 

@@ -1,6 +1,10 @@
 
 export function isDom(node) {
-  return typeof node === 'object' && node.nodeType !== undefined
+  return !!node && typeof node === 'object' && node.nodeType !== undefined
+}
+
+export function isElement(node) {
+  return isDom(node) && node.nodeType === 1
 }
 
 /**
@@ -22,7 +26,6 @@ export function getStyleProperty(element, propertyName, prefixVendor = false) {
     for (let counter = 0; counter < prefixes.length; counter++) {
       const prefixedProperty = prefixes[counter] + propertyName
       const foundValue = getStyleProperty(element, prefixedProperty)
-
       if (foundValue) {
         return foundValue
       }
@@ -45,12 +48,8 @@ export function getStyleProperty(element, propertyName, prefixVendor = false) {
 }
 
 export function getElementNode(selector, parent = document) {
-  if (!selector) {
-    return null
-  }
-
-  if (isDom(selector)) {
-    return selector.nodeType === 1 ? selector : null
+  if (isElement(selector)) {
+    return selector
   }
 
   try {
@@ -63,11 +62,7 @@ export function getElementNode(selector, parent = document) {
 }
 
 export function getElementNodes(selector, parent = document) {
-  if (!selector) {
-    return []
-  }
-
-  if (isDom(selector)) {
+  if (isElement(selector)) {
     return selector.nodeType === 1 ? [selector] : []
   }
 
