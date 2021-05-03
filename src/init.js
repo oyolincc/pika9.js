@@ -24,9 +24,14 @@ export const initPayload = {
 
 export function initMixin(Pika9) {
   Pika9.prototype._init = function(options) {
+    if (!options) {
+      throw new Error('invalid pika9 options')
+    } else if (!options.parent || !options.children) {
+      throw new Error('pika9 options should have parent and children')
+    }
     // 初始化私有属性
     merge(this, initPayload)
     // 与默认配置作合并
-    this._options = Object.freeze(merge({ ...defaultOptions }, options || {}, true))
+    this._options = Object.freeze(merge({ ...defaultOptions }, options, true))
   }
 }

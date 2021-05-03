@@ -8,6 +8,10 @@ function Pika9(options) {
     throw new Error('make sure you running Pika9.js in bowser')
   }
 
+  if (!this instanceof Pika9) {
+    return new Pika9(options)
+  }
+
   this._init(options)
 }
 

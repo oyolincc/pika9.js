@@ -37,7 +37,12 @@ const coreConfig = [{
   ],
   plugins: [
     terser(),
-    copy({ targets: [{ src: 'public/pika9.css', dest: 'dist' }] }),
+    copy({
+      targets: [
+        { src: 'public/pika9.css', dest: 'dist' },
+        { src: 'src/index.d.ts', dest: 'dist' }
+      ]
+    }),
     ...commonPlugins
   ]
 }]
