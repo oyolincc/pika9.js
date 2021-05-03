@@ -1,11 +1,13 @@
 {
   "name": "pika9",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "dist/pika9.common.js",
   "module": "dist/pika9.esm.js",
   "style": "dist/pika9.css",
   "description": "pika9 allows you to select elements in the drag area",
-  "files": ["dist/"],
+  "files": [
+    "dist/"
+  ],
   "types": "dist/index.d.ts",
   "author": "bbbonnana <a824759414@gmail.com>",
   "repository": "https://github.com/bbbonnana/pika9.js",
