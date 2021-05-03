@@ -5,9 +5,10 @@ const pika9 = new Pika9({
   children: ['.item'],
   mode: 'toggle',
   threshold: 200,
+  cleanOnClick: true,
+  onStart: ev => console.log('start', ev),
   onHold: ev => console.log('holding', ev),
-  onEnd: ev => console.log('结束', ev)
-  // onChange: ev => console.log(ev)
+  onEnd: ev => console.log('end', ev)
 })
 
 let enable = false

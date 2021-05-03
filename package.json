@@ -3,8 +3,18 @@
   "version": "1.0.0",
   "main": "dist/pika9.common.js",
   "module": "dist/pika9.esm.js",
-  "author": "LiNKS <a824759414@gmail.com>",
+  "style": "dist/pika9.css",
+  "description": "pika9 allows you to select elements in the drag area",
   "files": ["dist/"],
+  "author": "bbbonnana <a824759414@gmail.com>",
+  "repository": "https://github.com/bbbonnana/pika9.js",
+  "homepage": "https://github.com/bbbonnana/pika9.js#pika9js",
+  "keywords": [
+    "JavaScript",
+    "Select",
+    "Drag",
+    "DOM"
+  ],
   "license": "MIT",
   "scripts": {
     "predev": "rimraf ./dist-demo",
