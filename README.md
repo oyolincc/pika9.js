@@ -32,15 +32,15 @@ pika9.enable()
 
 * **toggle**
 
-  ![toggle](./docs/toggle.gif)
+  ![toggle: /docs/toggle.gif](./docs/toggle.gif)
 
 * **append**
 
-  ![toggle](./docs/append.gif)
+  ![append: /docs/append.gif](./docs/append.gif)
 
 * **disposable**
 
-  ![toggle](./docs/disposable.gif)
+  ![disposable: /docs/disposable.gif](./docs/disposable.gif)
 
 ## Run demo
 
