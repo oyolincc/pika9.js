@@ -1,6 +1,6 @@
 {
   "name": "pika9",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "dist/pika9.common.js",
   "module": "dist/pika9.esm.js",
   "style": "dist/pika9.css",
